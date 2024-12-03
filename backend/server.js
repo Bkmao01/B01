@@ -9,7 +9,7 @@ const cors = require('cors');
 
 const app = express();
 const port = 30001;
-const secretKey = "ben";
+const secretKey = "Ben";
 
 console.log('Server is starting...');
 
@@ -37,30 +37,29 @@ const db = mysql.createConnection({
 db.connect(err => {
   if (err) throw err;
   console.log('Database connected...');
-});
 
-// Function to seed the initial user
-const seedUser = () => {
-  const username = 'ben';
-  const password = 'ben';
-  const hashedPassword = bcrypt.hashSync(password, 8);
+  // Seed a test user
+  const seedUser = () => {
+    const username = 'Ben';
+    const password = bcrypt.hashSync('password', 10); // Hash the password
+    const query = 'INSERT INTO users (username, password) VALUES (?, ?)';
 
-  const query = 'INSERT INTO users (username, password) VALUES (?, ?)';
-  db.query(query, [username, hashedPassword], (err, results) => {
-    if (err) {
-      if (err.code === 'ER_DUP_ENTRY') {
-        console.log('User already exists');
+    db.query(query, [username, password], (err, results) => {
+      if (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+          console.log('User already exists');
+        } else {
+          throw err;
+        }
       } else {
-        throw err;
+        console.log('User added');
       }
-    } else {
-      console.log('User added');
-    }
-  });
-};
+    });
+  };
 
-// Call the function to seed the user
-seedUser();
+  // Call the function to seed the user
+  seedUser();
+});
 
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
@@ -69,26 +68,19 @@ app.post('/api/login', (req, res) => {
     if (err) throw err;
     if (results.length > 0) {
       const user = results[0];
+      console.log('User found:', user);
+      console.log('Password from request:', password);
+      console.log('Password from database:', user.password);
       if (bcrypt.compareSync(password, user.password)) {
         const token = jwt.sign({ id: user.id, username: user.username }, secretKey, { expiresIn: '7d' });
-        res.json({
-          success: true,
-          err: null,
-          token
-        });
+        res.json({ success: true, token });
       } else {
-        res.status(401).json({
-          success: false,
-          token: null,
-          err: 'Username or password is incorrect'
-        });
+        console.log('Password mismatch');
+        res.status(401).json({ success: false, message: 'Authentication failed. Wrong password.' });
       }
     } else {
-      res.status(401).json({
-        success: false,
-        token: null,
-        err: 'Username or password is incorrect'
-      });
+      console.log('User not found');
+      res.status(401).json({ success: false, message: 'Authentication failed. User not found.' });
     }
   });
 });
@@ -145,7 +137,7 @@ app.get('/api/summary-chart-data', (req, res) => {
     const chartData = [
       { category: 'African American', value: 31 },
       { category: 'Asian American', value: 19 },
-      { category: 'Hispanic/Latinx', value: 14 }
+      { category: 'Latin', value: 25 }
     ];
     res.json(chartData);
   });
